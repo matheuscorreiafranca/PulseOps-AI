@@ -1,0 +1,42 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment: { POSTGRES_DB: pulseops, POSTGRES_USER: pulseops, POSTGRES_PASSWORD: pulseops }
+    ports: ["5432:5432"]
+    volumes: [pulseops_postgres:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U pulseops"], interval: 5s, timeout: 3s, retries: 15 }
+  redis:
+    image: redis:8-alpine
+    ports: ["6379:6379"]
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 5s, timeout: 3s, retries: 15 }
+  migrate:
+    build: { context: ., dockerfile: Dockerfile.api }
+    command: ["pnpm","--filter","@pulseops/api","db:migrate"]
+    environment: { DATABASE_URL: postgresql://pulseops:pulseops@postgres:5432/pulseops }
+    depends_on: { postgres: { condition: service_healthy } }
+    restart: "no"
+  seed:
+    build: { context: ., dockerfile: Dockerfile.api }
+    command: ["pnpm","--filter","@pulseops/api","db:seed"]
+    environment: { DATABASE_URL: postgresql://pulseops:pulseops@postgres:5432/pulseops }
+    depends_on: { migrate: { condition: service_completed_successfully } }
+    restart: "no"
+  api:
+    build: { context: ., dockerfile: Dockerfile.api }
+    environment:
+      NODE_ENV: production
+      PORT: 3333
+      WEB_ORIGIN: http://localhost:8080
+      DATABASE_URL: postgresql://pulseops:pulseops@postgres:5432/pulseops
+      REDIS_URL: redis://redis:6379
+      SESSION_SECRET: demo-compose-secret-change-for-production-123
+      LLM_PROVIDER: demo
+      ENABLE_WORKERS: "true"
+    ports: ["3333:3333"]
+    depends_on: { postgres: { condition: service_healthy }, redis: { condition: service_healthy }, seed: { condition: service_completed_successfully } }
+    healthcheck: { test: ["CMD", "wget", "-qO-", "http://localhost:3333/health"], interval: 10s, timeout: 3s, retries: 15 }
+  web:
+    build: { context: ., dockerfile: Dockerfile.web, args: { VITE_API_URL: http://localhost:3333 } }
+    ports: ["8080:80"]
+    depends_on: { api: { condition: service_healthy } }
+volumes: { pulseops_postgres: {} }

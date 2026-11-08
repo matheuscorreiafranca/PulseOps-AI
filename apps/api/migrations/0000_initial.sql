@@ -1,0 +1,9 @@
+CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE TABLE IF NOT EXISTS users (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), name text NOT NULL, email text NOT NULL UNIQUE, password_hash text NOT NULL, role text NOT NULL CHECK(role IN ('admin','operator','viewer')), created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS services (id text PRIMARY KEY, name text NOT NULL, slug text NOT NULL UNIQUE, status text NOT NULL, availability real NOT NULL, latency_ms integer NOT NULL, error_rate real NOT NULL, updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS incidents (id text PRIMARY KEY, title text NOT NULL, description text NOT NULL, severity text NOT NULL, status text NOT NULL, service_id text NOT NULL REFERENCES services(id), assignee text, sla_due_at timestamptz NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS incident_events (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), incident_id text NOT NULL REFERENCES incidents(id), type text NOT NULL, message text NOT NULL, actor text NOT NULL, metadata jsonb NOT NULL DEFAULT '{}', created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS runbook_chunks (id text PRIMARY KEY, document text NOT NULL, content text NOT NULL, version text NOT NULL, service text NOT NULL, category text NOT NULL, embedding vector(1536));
+CREATE INDEX IF NOT EXISTS runbook_embedding_idx ON runbook_chunks USING hnsw (embedding vector_cosine_ops);
+CREATE TABLE IF NOT EXISTS audit_events (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), action text NOT NULL, resource text NOT NULL, actor text NOT NULL, correlation_id text NOT NULL, metadata jsonb NOT NULL DEFAULT '{}', created_at timestamptz NOT NULL DEFAULT now());

@@ -1,0 +1,7 @@
+FROM node:24-alpine AS build
+RUN corepack enable
+WORKDIR /app
+COPY . .
+RUN pnpm install --no-frozen-lockfile && pnpm --filter @pulseops/api build
+EXPOSE 3333
+CMD ["pnpm","--filter","@pulseops/api","start"]
