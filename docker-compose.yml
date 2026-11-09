@@ -28,6 +28,7 @@ services:
       PORT: 3333
       WEB_ORIGIN: http://localhost:8080
       DATABASE_URL: postgresql://pulseops:pulseops@postgres:5432/pulseops
+      DATA_BACKEND: postgres
       REDIS_URL: redis://redis:6379
       SESSION_SECRET: demo-compose-secret-change-for-production-123
       LLM_PROVIDER: demo

@@ -21,6 +21,7 @@ import {
   LogOut,
   Menu,
   Play,
+  Plus,
   Search,
   Server,
   ShieldCheck,
@@ -49,6 +50,7 @@ import type {
   User,
 } from "@pulseops/contracts";
 import { api, investigate, session } from "./api";
+import { Badge, PageHeader as Header, QueryState } from "./components/ui";
 type Dashboard = {
   services: Service[];
   metrics: { time: string; latency: number; errors: number }[];
@@ -61,28 +63,6 @@ type Dashboard = {
   };
   recentIncidents: Incident[];
 };
-const statusTone: Record<string, string> = {
-  healthy: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
-  degraded: "border-amber-500/30 bg-amber-500/10 text-amber-300",
-  down: "border-rose-500/30 bg-rose-500/10 text-rose-300",
-  critical: "border-rose-500/30 bg-rose-500/10 text-rose-300",
-  high: "border-orange-500/30 bg-orange-500/10 text-orange-300",
-  medium: "border-amber-500/30 bg-amber-500/10 text-amber-300",
-  low: "border-sky-500/30 bg-sky-500/10 text-sky-300",
-  resolved: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
-  closed: "border-slate-500/30 bg-slate-500/10 text-slate-300",
-  failed: "border-rose-500/30 bg-rose-500/10 text-rose-300",
-  running: "border-sky-500/30 bg-sky-500/10 text-sky-300",
-  completed: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
-  delayed: "border-amber-500/30 bg-amber-500/10 text-amber-300",
-};
-const Badge = ({ value }: { value: string }) => (
-  <span
-    className={`badge ${statusTone[value] ?? "border-line bg-white/5 text-slate-300"}`}
-  >
-    {value.replaceAll("_", " ")}
-  </span>
-);
 function Login() {
   const [email, setEmail] = useState("operator@pulseops.local");
   const [password, setPassword] = useState("Demo123!");
@@ -291,56 +271,6 @@ function Shell() {
     </div>
   );
 }
-function Header({
-  eyebrow,
-  title,
-  description,
-}: {
-  eyebrow: string;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="mb-7">
-      <p className="label">{eyebrow}</p>
-      <h1 className="mt-2 text-3xl font-semibold tracking-tight">{title}</h1>
-      <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">
-        {description}
-      </p>
-    </div>
-  );
-}
-function QueryState({
-  loading,
-  error,
-  empty,
-  children,
-}: {
-  loading: boolean;
-  error: Error | null;
-  empty?: boolean;
-  children: React.ReactNode;
-}) {
-  if (loading)
-    return (
-      <div className="card animate-pulse p-8 text-muted">
-        Carregando dados operacionais…
-      </div>
-    );
-  if (error)
-    return (
-      <div role="alert" className="card border-rose-500/30 p-8 text-rose-300">
-        Falha ao carregar: {error.message}
-      </div>
-    );
-  if (empty)
-    return (
-      <div className="card p-8 text-center text-muted">
-        Nenhum resultado encontrado para os filtros atuais.
-      </div>
-    );
-  return <>{children}</>;
-}
 function DashboardPage() {
   const q = useQuery({
     queryKey: ["dashboard"],
@@ -358,25 +288,27 @@ function DashboardPage() {
         {q.data && (
           <>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-              {([
+              {(
                 [
-                  "Disponibilidade",
-                  `${q.data.summary.availability}%`,
-                  Activity,
-                ],
-                [
-                  "Incidentes abertos",
-                  q.data.summary.openIncidents,
-                  AlertTriangle,
-                ],
-                ["Críticos", q.data.summary.criticalIncidents, XCircle],
-                ["Jobs falhos", q.data.summary.failedJobs, TerminalSquare],
-                [
-                  "Serviços degradados",
-                  q.data.summary.degradedServices,
-                  Server,
-                ],
-              ] as const).map(([label, value, Icon]) => (
+                  [
+                    "Disponibilidade",
+                    `${q.data.summary.availability}%`,
+                    Activity,
+                  ],
+                  [
+                    "Incidentes abertos",
+                    q.data.summary.openIncidents,
+                    AlertTriangle,
+                  ],
+                  ["Críticos", q.data.summary.criticalIncidents, XCircle],
+                  ["Jobs falhos", q.data.summary.failedJobs, TerminalSquare],
+                  [
+                    "Serviços degradados",
+                    q.data.summary.degradedServices,
+                    Server,
+                  ],
+                ] as const
+              ).map(([label, value, Icon]) => (
                 <div className="card p-5" key={String(label)}>
                   <div className="flex items-center justify-between text-muted">
                     <span className="label">{label as string}</span>
@@ -538,8 +470,33 @@ function IncidentTable({ incidents }: { incidents: Incident[] }) {
   );
 }
 function IncidentsPage() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [severity, setSeverity] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [draft, setDraft] = useState({
+    title: "",
+    description: "",
+    severity: "medium",
+    serviceId: "svc-orders",
+  });
+  const serviceQuery = useQuery({
+    queryKey: ["services"],
+    queryFn: () => api<{ items: Service[] }>("/api/v1/services"),
+  });
+  const createIncident = useMutation({
+    mutationFn: () =>
+      api<Incident>("/api/v1/incidents", {
+        method: "POST",
+        body: JSON.stringify(draft),
+      }),
+    onSuccess: async (incident) => {
+      await queryClient.invalidateQueries({ queryKey: ["incidents"] });
+      setCreating(false);
+      navigate(`/incidents/${incident.id}`);
+    },
+  });
   const q = useQuery({
     queryKey: ["incidents", search, severity],
     queryFn: () =>
@@ -549,11 +506,19 @@ function IncidentsPage() {
   });
   return (
     <>
-      <Header
-        eyebrow="Incident command"
-        title="Incidentes"
-        description="Investigue, acompanhe e encerre eventos com trilha completa de auditoria."
-      />
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+        <Header
+          eyebrow="Incident command"
+          title="Incidentes"
+          description="Investigue, acompanhe e encerre eventos com trilha completa de auditoria."
+        />
+        <button
+          className="btn-primary shrink-0"
+          onClick={() => setCreating(true)}
+        >
+          <Plus size={16} /> Novo incidente
+        </button>
+      </div>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row">
         <label className="relative flex-1">
           <Search className="absolute left-3 top-3 text-muted" size={17} />
@@ -585,6 +550,117 @@ function IncidentsPage() {
       >
         {q.data && <IncidentTable incidents={q.data.items} />}
       </QueryState>
+      {creating && (
+        <div
+          role="presentation"
+          className="fixed inset-0 z-[60] grid place-items-center bg-black/70 p-4"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setCreating(false);
+          }}
+        >
+          <form
+            className="card w-full max-w-xl p-6"
+            onSubmit={(event) => {
+              event.preventDefault();
+              createIncident.mutate();
+            }}
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="label">Novo registro operacional</p>
+                <h2 className="mt-2 text-xl font-semibold">Criar incidente</h2>
+              </div>
+              <button
+                type="button"
+                className="btn-secondary p-2"
+                aria-label="Fechar"
+                onClick={() => setCreating(false)}
+              >
+                <XCircle size={18} />
+              </button>
+            </div>
+            <label className="mt-6 block text-sm font-medium">
+              Título
+              <input
+                className="input mt-2"
+                minLength={5}
+                maxLength={160}
+                required
+                value={draft.title}
+                onChange={(event) =>
+                  setDraft({ ...draft, title: event.target.value })
+                }
+              />
+            </label>
+            <label className="mt-4 block text-sm font-medium">
+              Descrição
+              <textarea
+                className="input mt-2 min-h-28"
+                minLength={10}
+                maxLength={2000}
+                required
+                value={draft.description}
+                onChange={(event) =>
+                  setDraft({ ...draft, description: event.target.value })
+                }
+              />
+            </label>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <label className="text-sm font-medium">
+                Severidade
+                <select
+                  className="input mt-2"
+                  value={draft.severity}
+                  onChange={(event) =>
+                    setDraft({ ...draft, severity: event.target.value })
+                  }
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="critical">Critical</option>
+                </select>
+              </label>
+              <label className="text-sm font-medium">
+                Serviço
+                <select
+                  className="input mt-2"
+                  value={draft.serviceId}
+                  onChange={(event) =>
+                    setDraft({ ...draft, serviceId: event.target.value })
+                  }
+                >
+                  {serviceQuery.data?.items.map((service) => (
+                    <option key={service.id} value={service.id}>
+                      {service.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            {createIncident.error && (
+              <p role="alert" className="mt-4 text-sm text-rose-300">
+                {createIncident.error.message}
+              </p>
+            )}
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setCreating(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                className="btn-primary"
+                disabled={createIncident.isPending}
+              >
+                {createIncident.isPending ? "Criando…" : "Criar incidente"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </>
   );
 }
@@ -707,8 +783,7 @@ function Copilot({ incident }: { incident: Incident }) {
   const analysis = [...events]
     .reverse()
     .find((event: StreamEvent) => event.type === "analysis.completed")?.data as
-    | Analysis
-    | undefined;
+    Analysis | undefined;
   const text = events
     .filter((e) => e.type === "analysis.delta")
     .map((e) => (e.type === "analysis.delta" ? e.data.delta : ""))
