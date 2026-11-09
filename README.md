@@ -12,11 +12,43 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-4169E1?logo=postgresql&logoColor=white)](https://github.com/pgvector/pgvector)
 [![CI](https://img.shields.io/badge/quality-lint%20%7C%20types%20%7C%20tests-22c55e)](#qualidade-e-testes)
 
-[Quick start](#quick-start) · [Arquitetura](#arquitetura) · [Fluxo de IA](#fluxo-de-investigação-com-ia) · [Segurança](#segurança) · [Demo](#roteiro-de-demo-em-5-minutos)
+[Produto](#produto-em-ação) · [Quick start](#quick-start) · [Arquitetura](#arquitetura) · [Fluxo de IA](#fluxo-de-investigação-com-ia) · [Segurança](#segurança) · [Demo](#roteiro-de-demo-em-5-minutos)
 
 </div>
 
 ---
+
+![Dashboard operacional do PulseOps AI](./docs/images/dashboard.png)
+
+<p align="center">
+  <sub>Dashboard real do Demo Mode: saúde dos serviços, SLOs, latência, erros, incidentes e jobs em uma única visão.</sub>
+</p>
+
+## Visão executiva
+
+O **PulseOps AI** é uma plataforma de resposta a incidentes que transforma sinais operacionais dispersos em uma investigação explicável, segura e acionável. O operador acompanha o problema, pede uma análise ao copiloto, observa cada ferramenta consultada em tempo real, confere as fontes recuperadas e decide se a remediação proposta deve ser aprovada.
+
+Este repositório foi construído como um produto completo — não como uma coleção de telas. Frontend, API, domínio, persistência, fila, IA e observabilidade possuem contratos claros e podem ser executados localmente sem credenciais externas.
+
+### O que um recrutador consegue avaliar aqui
+
+| Competência | Evidência no projeto |
+| --- | --- |
+| Construção de produto | Jornada coerente de login, monitoramento, incidente, investigação e aprovação |
+| Full Stack TypeScript | Monorepo com React e Fastify compartilhando contratos Zod tipados |
+| Engenharia de IA | Provider real, Demo Mode determinístico, Tool Calling, RAG, Structured Outputs e SSE |
+| Arquitetura | Camadas de domínio, casos de uso, ports/adapters e state machine de incidentes |
+| Segurança | RBAC, rate limiting, allowlist de tools, redação de segredos e human-in-the-loop |
+| Qualidade | Testes unitários, integração, componentes, E2E, AI evals e pipeline de CI |
+| Experiência operacional | Docker Compose, migrations, seed, health checks, logs e correlation ID |
+
+### Diferenciais que vão além do CRUD
+
+- **IA observável:** a interface revela tools, argumentos, duração, resultados, fontes e confiança; a resposta não aparece como uma caixa-preta.
+- **Segurança por desenho:** o modelo não recebe shell nem SQL arbitrário e nenhuma recomendação mutável é executada automaticamente.
+- **Demonstração reproduzível:** toda a jornada funciona sem chave de LLM e os testes nunca consomem APIs pagas.
+- **Evolução realista:** adapters permitem alternar do ambiente em memória para PostgreSQL, pgvector, Redis e BullMQ sem mover regras de negócio para a infraestrutura.
+- **Contratos verificáveis:** entradas, tools, eventos SSE e saídas estruturadas são validados no backend.
 
 ## Por que este projeto existe
 
@@ -33,6 +65,27 @@ O PulseOps AI concentra esse fluxo em um produto B2B fictício:
 7. exige uma decisão humana auditável.
 
 Todos os nomes, serviços, usuários, métricas, logs e incidentes são sintéticos. Este é um projeto autoral de portfólio, sem associação com empresas reais.
+
+## Produto em ação
+
+As imagens abaixo foram capturadas da aplicação em execução, usando apenas o ambiente sintético incluído no repositório.
+
+### Incident Command
+
+Filtros, severidade e estado operacional ajudam a priorizar a resposta. Cada incidente abre uma visão detalhada com timeline, evidências e ações permitidas pelo perfil do usuário.
+
+![Lista de incidentes do PulseOps AI](./docs/images/incidents.png)
+
+### Investigação explicável com IA
+
+O streaming mostra a análise enquanto ela acontece. Chamadas de ferramentas e fontes RAG permanecem visíveis, e a conclusão validada inclui confiança e a exigência de aprovação humana.
+
+<p align="center">
+  <img src="./docs/images/ai-investigation.png" width="680" alt="Copiloto de investigação exibindo tools, fontes RAG e conclusão estruturada" />
+</p>
+
+> [!NOTE]
+> As capturas podem ser regeneradas contra a aplicação local com `pnpm capture:screenshots`. Isso mantém a documentação alinhada ao produto entregue.
 
 ## O que demonstra
 

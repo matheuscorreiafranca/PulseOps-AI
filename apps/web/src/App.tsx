@@ -499,10 +499,12 @@ function IncidentsPage() {
   });
   const q = useQuery({
     queryKey: ["incidents", search, severity],
-    queryFn: () =>
-      api<{ items: Incident[]; total: number }>(
-        `/api/v1/incidents?search=${encodeURIComponent(search)}&severity=${severity}`,
-      ),
+    queryFn: () => {
+      const query = new URLSearchParams();
+      if (search) query.set('search', search);
+      if (severity) query.set('severity', severity);
+      return api<{ items: Incident[]; total: number }>(`/api/v1/incidents?${query.toString()}`);
+    },
   });
   return (
     <>
